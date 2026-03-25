@@ -7,6 +7,12 @@ class NonEmptyString {
 
   NonEmptyString._(this.value) : assert(value.isNotEmpty);
 
+  // TODO: Just for test!!!!!!!!!
+  static NonEmptyString unsafeMake(String value) {
+    assert(const bool.fromEnvironment("dart.vm.product"));
+    return NonEmptyString._(value);
+  }
+
   static Option<NonEmptyString> makeFromString(String value) =>
     value.trim().isEmpty ? none() : some(NonEmptyString._(value));
 
