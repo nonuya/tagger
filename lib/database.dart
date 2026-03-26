@@ -7,12 +7,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:tagger/serializer.dart';
 
 class Database {
-  final String directory_path;
-  final List<Artist> artists;
-  final List<Tag> tags;
-  final HashMap<int /* tag_id */, int /* index in list */> map_tags;
+  final String _directory_path;
+  final List<Artist> _artists;
+  final List<Tag> _tags;
+  final HashMap<int /* tag_id */, int /* index in list */> _map_tags;
 
-  Database._(this.directory_path, this.artists, this.tags, this.map_tags);
+  List<Tag> get tags => List.unmodifiable(_artists);
+
+  Database._(this._directory_path, this._artists, this._tags, this._map_tags);
 
   static TaskOption<Database> make_from_data() => TaskOption(() async {
     final directory = await getApplicationDocumentsDirectory();
