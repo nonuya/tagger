@@ -1,12 +1,17 @@
 import 'dart:typed_data';
+import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 import 'packer_extension.dart';
 import 'package:messagepack/messagepack.dart';
 
-class NonEmptyString {
+class NonEmptyString extends Equatable {
   final String value;
 
   NonEmptyString._(this.value) : assert(value.isNotEmpty);
+
+  @override
+  // TODO: implement props
+  List<Object?> get props => [value];
 
   // TODO: Just for test!!!!!!!!!
   static NonEmptyString unsafeMake(String value) {
@@ -14,8 +19,10 @@ class NonEmptyString {
     return NonEmptyString._(value);
   }
 
-  static Option<NonEmptyString> makeFromString(String value) =>
-    value.trim().isEmpty ? none() : some(NonEmptyString._(value));
+  static Option<NonEmptyString> makeFromString(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? none(): some(NonEmptyString._(trimmed));
+  }
 
   static Option<NonEmptyString> makeFromUnpacker(Unpacker unpacker) => unpacker
     .toOptionString()
