@@ -311,7 +311,7 @@ class _LinkFormState extends State<_LinkForm> {
                         SizedBox(width: 10),
                         IconButton(
                           onPressed: () async {
-                            final confirm = await _show_yes_no_dialog(context, 'Delete "${url}"?');
+                            final confirm = await _show_yes_no_dialog(context, 'Delete "${url.value}"?');
                             if(confirm) {
                               setState(() => widget.link_set.remove(url));
                             }
