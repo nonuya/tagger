@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' as fp;
 import 'package:tagger/theme.dart';
@@ -45,21 +47,33 @@ final test_artist = Artist(
   ],
 );
 
+// O(n) but more cache locality
+final vec_tags = [
+  Tag(id: 0, name: .unsafeMake("Tag 1")),
+  Tag(id: 1, name: .unsafeMake("Tag 2")),
+  Tag(id: 2, name: .unsafeMake("Tag 3")),
+  Tag(id: 3, name: .unsafeMake("Tag 4")),
+  Tag(id: 4, name: .unsafeMake("Tag 5")),
+  Tag(id: 5, name: .unsafeMake("Tag 6")),
+];
+
 final test_tags = {
-  0: Tag(id: 0, name: .unsafeMake("Tag 1")),
-  1: Tag(id: 0, name: .unsafeMake("Tag 2")),
-  2: Tag(id: 0, name: .unsafeMake("Tag 3")),
-  3: Tag(id: 0, name: .unsafeMake("Tag 4")),
-  4: Tag(id: 0, name: .unsafeMake("Tag 5")),
-  5: Tag(id: 0, name: .unsafeMake("Tag 6")),
+  0: vec_tags[0],
+  1: vec_tags[1],
+  2: vec_tags[2],
+  3: vec_tags[3],
+  4: vec_tags[4],
+  5: vec_tags[5],
 };
 
 void main() {
-  runApp(const App());
+  runApp(App());
 }
 
 class App extends StatelessWidget {
-  const App({super.key});
+  final controller = PageController(initialPage: 1, keepPage: false);
+
+  App({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -69,22 +83,169 @@ class App extends StatelessWidget {
         body: Padding(
           padding: EdgeInsetsGeometry.all(16),
           child: SafeArea(
-            child: Column(
-              crossAxisAlignment: .start,
-              children: [
-                Expanded(
-                  flex: 0,
-                  child: TextField(
-                    decoration: InputDecoration(hintText: "Search by..."),
-                  ),
-                ),
-                SizedBox(height: 10),
-                ArtistItem(test_artist),
-              ],
+            child: PageView(
+              controller: controller,
+              children: [buildHomePage(), buildAddPage()],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget buildHomePage() {
+    return Column(
+      crossAxisAlignment: .start,
+      children: [
+        Expanded(
+          flex: 0,
+          child: TextField(
+            decoration: InputDecoration(hintText: "Search by..."),
+          ),
+        ),
+        SizedBox(height: 10),
+        ArtistItem(test_artist),
+      ],
+    );
+  }
+
+  Widget buildAddPage() {
+    return Column(
+      crossAxisAlignment: .stretch,
+      children: [
+        const Text(
+          "Add",
+          textAlign: .center,
+          style: TextStyle(fontWeight: .bold, fontSize: 24),
+        ),
+        SizedBox(height: 10),
+        TagForm(),
+      ],
+    );
+  }
+}
+
+class TagForm extends StatefulWidget {
+  const TagForm({super.key});
+
+  @override
+  createState() => _TagForm();
+}
+
+class _TagForm extends State<TagForm> {
+  final _formKey = GlobalKey<FormState>();
+  final Map<NonEmptyString, fp.Option<Uint8List>> map = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          Autocomplete<String>(
+            optionsBuilder: (input) {
+              return vec_tags
+                  .filter(
+                    (tag) =>
+                        tag.name.value.toLowerCase().startsWith(input.text),
+                  )
+                  .filter((tag) => !map.containsKey(tag.name))
+                  .map((tag) => tag.name.value);
+            },
+            fieldViewBuilder:
+                (context, controller, focusNode, onEditingComplete) {
+                  return TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: "Tag?",
+                      hintText: "Write something",
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            NonEmptyString.makeFromString(
+                              controller.text,
+                            ).match(() {}, (v) {
+                              if (!map.containsKey(v)) {
+                                setState(() {
+                                  map[v] = fp.None();
+                                });
+                              }
+                            });
+                            controller.clear();
+                            focusNode.unfocus();
+                          }
+                        },
+                        icon: Icon(Icons.add),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Tag is empty";
+                      }
+                      return null;
+                    },
+                  );
+                },
+          ),
+          SizedBox(height: 10),
+          Wrap(
+            runSpacing: 8,
+            spacing: 8,
+            children: map.entries
+                .map(
+                  (e) => OutlinedButton(
+                    onPressed: () => showImageModal(),
+                    style: get_tag_style(
+                      e.value.isSome() ? Colors.green : Colors.red,
+                    ),
+                    child: Row(
+                      mainAxisSize: .min,
+                      children: [
+                        Text(e.key.value),
+                        SizedBox(width: 10),
+                        IconButton(
+                          onPressed: () => setState(() => map.remove(e.key)),
+                          style: get_button_icon_style(),
+                          icon: Icon(Icons.delete),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showImageModal() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Column(
+          children: [
+            Expanded(
+              flex: 1,
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: "Image URL",
+                  suffixIcon: IconButton(onPressed: () {}, icon: Icon(Icons.search)),
+                  hintText: "https://hitomi.la/reader/xxxxxxx.html#xx-xx",
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 5,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -149,10 +310,16 @@ class _ArtistItem extends State<ArtistItem> {
                       assert(tag != null);
 
                       return OutlinedButton(
-                        onPressed: () {setState(() {
-                          selectedItem = fp.some(i);
-                        });},
-                        style: get_tag_style(selectedItem.getOrElse(() => -1) == i),
+                        onPressed: () {
+                          setState(() {
+                            selectedItem = fp.some(i);
+                          });
+                        },
+                        style: get_tag_style(
+                          selectedItem.getOrElse(() => -1) == i
+                              ? Colors.blue
+                              : Colors.grey,
+                        ),
                         child: Text(tag!.name.value),
                       );
                     }).toList(),
