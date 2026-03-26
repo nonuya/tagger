@@ -9,13 +9,26 @@ import 'package:tagger/theme.dart';
 import 'package:fpdart/fpdart.dart' as fp;
 import 'package:toastification/toastification.dart';
 
-class AddPage extends StatelessWidget {
-  final _formKey = GlobalKey<FormState>();
+class AddPage extends StatefulWidget {
   final Database _database;
-  final HashMap<NonEmptyString, fp.Option<Uint8List>> _tag_map = HashMap();
-  final HashSet<NonEmptyString> _link_set = HashSet();
+  final _tag_map = HashMap<NonEmptyString, fp.Option<Uint8List>>();
+  final _link_set = HashSet<NonEmptyString>();
 
   AddPage(this._database, {super.key});
+
+  @override
+  createState() => _AddPage();
+}
+
+class _AddPage extends State<AddPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +47,26 @@ class AddPage extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (_formKey.currentState!.validate()) {}
+                  if (_formKey.currentState!.validate()) {
+                    NonEmptyString.makeFromString(_controller.text)
+                    .map2(
+                      widget._tag_map.entries
+                        .traverseOption(
+                          (e) => e.value.map((bytes) => (e.key, bytes))),
+                      (artist_name, tags) => (artist_name, tags, widget._link_set),
+                    ).match(
+                      () {
+                        toastification.show(
+                                title: Text("Tag images are empty!"),
+                                type: .error,
+                                autoCloseDuration: const Duration(seconds: 3),
+                              );
+                      },
+                      (e) {
+                        debugPrint(e.$1.value);
+                      }
+                    );
+                  }
                 },
                 child: const Text("Save"),
               ),
@@ -47,6 +79,7 @@ class AddPage extends StatelessWidget {
                 children: [
                   SizedBox(height: 10),
                   TextFormField(
+                    controller: _controller,
                     decoration: InputDecoration(
                       labelText: "Artist Name",
                       hintText: "artist 1",
@@ -57,11 +90,11 @@ class AddPage extends StatelessWidget {
                   ),
                   SizedBox(height: 20),
 
-                  _TagForm(_tag_map, _database.tags),
+                  _TagForm(widget._tag_map, widget._database.tags),
 
                   SizedBox(height: 10),
 
-                  _LinkForm(_link_set),
+                  _LinkForm(widget._link_set),
                 ],
               ),
             ),
@@ -109,7 +142,7 @@ class _TagFormState extends State<_TagForm> {
                     focusNode: focusNode,
                     decoration: InputDecoration(
                       labelText: "Tag?",
-                      hintText: "Write something",
+                      hintText: "tag 1",
                       suffixIcon: IconButton(
                         onPressed: () {
                           if (formKey.currentState!.validate()) {
@@ -153,10 +186,13 @@ class _TagFormState extends State<_TagForm> {
                         SizedBox(width: 10),
                         IconButton(
                           onPressed: () async {
-                            final confirm = await _show_yes_no_dialog(context, 'Delete Tag "${e.key.value}"?');
+                            final confirm = await _show_yes_no_dialog(
+                              context,
+                              'Delete Tag "${e.key.value}"?',
+                            );
                             if (confirm) {
                               setState(() => widget.tag_map.remove(e.key));
-                            } 
+                            }
                           },
                           style: get_button_icon_style(),
                           icon: Icon(Icons.delete),
@@ -173,8 +209,8 @@ class _TagFormState extends State<_TagForm> {
   }
 
   void showImageModal(NonEmptyString key) {
-    final controller = TextEditingController();
     var loading = false;
+    String url = "";
 
     final updateImage = (bytes) =>
         setState(() => widget.tag_map[key] = fp.some(bytes));
@@ -201,7 +237,7 @@ class _TagFormState extends State<_TagForm> {
                 Expanded(
                   flex: 1,
                   child: TextField(
-                    controller: controller,
+                    onChanged: (value) => url = value,
                     decoration: InputDecoration(
                       labelText: "Image URL",
                       suffixIcon: IconButton(
@@ -214,7 +250,7 @@ class _TagFormState extends State<_TagForm> {
                           );
 
                           final res = await get_image_bytes_from_hitomi_url(
-                            controller.text,
+                            url,
                           ).run();
                           res.match(
                             (e) => setState(
@@ -260,6 +296,13 @@ class _LinkFormState extends State<_LinkForm> {
   final focusNode = FocusNode();
 
   @override
+  void dispose() {
+    controller.dispose();
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Form(
       key: formKey,
@@ -271,7 +314,7 @@ class _LinkFormState extends State<_LinkForm> {
             focusNode: focusNode,
             decoration: InputDecoration(
               labelText: "Link?",
-              hintText: "Write something",
+              hintText: "https://www.pixiv.net/",
               suffixIcon: IconButton(
                 onPressed: () {
                   if (formKey.currentState!.validate()) {
@@ -311,8 +354,11 @@ class _LinkFormState extends State<_LinkForm> {
                         SizedBox(width: 10),
                         IconButton(
                           onPressed: () async {
-                            final confirm = await _show_yes_no_dialog(context, 'Delete "${url.value}"?');
-                            if(confirm) {
+                            final confirm = await _show_yes_no_dialog(
+                              context,
+                              'Delete "${url.value}"?',
+                            );
+                            if (confirm) {
                               setState(() => widget.link_set.remove(url));
                             }
                           },
@@ -333,13 +379,20 @@ class _LinkFormState extends State<_LinkForm> {
 
 Future<bool> _show_yes_no_dialog(BuildContext context, String message) async {
   return await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(message),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("No")),
-        TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text("Yes")),
-      ],
-    )
-  ) ?? false;
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text("No"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text("Yes"),
+            ),
+          ],
+        ),
+      ) ??
+      false;
 }
