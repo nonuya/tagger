@@ -13,6 +13,7 @@ class AddPage extends StatelessWidget {
   final _formKey = GlobalKey<FormState>();
   final Database _database;
   final HashMap<NonEmptyString, fp.Option<Uint8List>> _tag_map = HashMap();
+  final HashSet<NonEmptyString> _link_set = HashSet();
   
   AddPage(this._database, {super.key});
 
@@ -50,7 +51,8 @@ class AddPage extends StatelessWidget {
           SizedBox(height: 10),
 
           _TagForm(_tag_map, _database.tags),
-          SizedBox(height: 10),
+
+          _LinkForm(_link_set),
         ],
       ),
     );
@@ -58,33 +60,33 @@ class AddPage extends StatelessWidget {
 }
 
 class _TagForm extends StatefulWidget {
-  final HashMap<NonEmptyString, fp.Option<Uint8List>> _tag_map;
-  final List<Tag> _tags;
+  final HashMap<NonEmptyString, fp.Option<Uint8List>> tag_map;
+  final List<Tag> tags;
 
-  const _TagForm(this._tag_map, this._tags, {super.key});
+  const _TagForm(this.tag_map, this.tags);
 
   @override
   createState() => _TagFormState();
 }
 
 class _TagFormState extends State<_TagForm> {
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
     return Form(
-      key: _formKey,
+      key: formKey,
       child: Column(
         crossAxisAlignment: .start,
         children: [
           Autocomplete<String>(
             optionsBuilder: (input) {
-              return widget._tags
+              return widget.tags
                   .filter(
                     (tag) =>
                         tag.name.value.toLowerCase().startsWith(input.text),
                   )
-                  .filter((tag) => !widget._tag_map.containsKey(tag.name))
+                  .filter((tag) => !widget.tag_map.containsKey(tag.name))
                   .map((tag) => tag.name.value);
             },
             fieldViewBuilder:
@@ -97,13 +99,13 @@ class _TagFormState extends State<_TagForm> {
                       hintText: "Write something",
                       suffixIcon: IconButton(
                         onPressed: () {
-                          if (_formKey.currentState!.validate()) {
+                          if (formKey.currentState!.validate()) {
                             NonEmptyString.makeFromString(
                               controller.text,
                             ).match(() {}, (v) {
-                              if (!widget._tag_map.containsKey(v)) {
+                              if (!widget.tag_map.containsKey(v)) {
                                 setState(() {
-                                  widget._tag_map[v] = fp.None();
+                                  widget.tag_map[v] = fp.None();
                                 });
                               }
                             });
@@ -122,7 +124,7 @@ class _TagFormState extends State<_TagForm> {
           Wrap(
             runSpacing: 8,
             spacing: 8,
-            children: widget._tag_map.entries
+            children: widget.tag_map.entries
                 .map(
                   (e) => OutlinedButton(
                     onPressed: () => showImageModal(e.key),
@@ -135,7 +137,7 @@ class _TagFormState extends State<_TagForm> {
                         Text(e.key.value),
                         SizedBox(width: 10),
                         IconButton(
-                          onPressed: () => setState(() => widget._tag_map.remove(e.key)),
+                          onPressed: () => setState(() => widget.tag_map.remove(e.key)),
                           style: get_button_icon_style(),
                           icon: Icon(Icons.delete),
                         ),
@@ -154,14 +156,14 @@ class _TagFormState extends State<_TagForm> {
     final controller = TextEditingController();
     var loading = false;
 
-    final updateImage = (bytes) => setState(() => widget._tag_map[key] = fp.some(bytes));
+    final updateImage = (bytes) => setState(() => widget.tag_map[key] = fp.some(bytes));
 
     showModalBottomSheet(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            var image = widget._tag_map
+            var image = widget.tag_map
                 .lookup(key)
                 .flatMap((o) => o)
                 .match(
@@ -218,6 +220,85 @@ class _TagFormState extends State<_TagForm> {
           },
         );
       },
+    );
+  }
+}
+
+class _LinkForm extends StatefulWidget {
+  final HashSet<NonEmptyString> link_set;
+
+  const _LinkForm(this.link_set);
+
+  @override
+  createState() => _LinkFormState();
+}
+
+class _LinkFormState extends State<_LinkForm> {
+  final formKey = GlobalKey<FormState>();
+  final controller = TextEditingController();
+  final focusNode = FocusNode();
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: formKey,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            decoration: InputDecoration(
+              labelText: "Link?",
+              hintText: "Write something",
+              suffixIcon: IconButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate()) {
+                    NonEmptyString.makeFromString(
+                      controller.text,
+                    ).match(() {}, (v) {
+                      if (!widget.link_set.contains(v)) {
+                        setState(() {
+                          widget.link_set.add(v);
+                        });
+                      }
+                    });
+                    controller.clear();
+                    focusNode.unfocus();
+                  }
+                },
+                icon: Icon(Icons.add),
+              ),
+            ),
+            validator: (value) => (value == null || value.isEmpty) ? "Tag is empty" : null,
+          ),
+          SizedBox(height: 10),
+          Wrap(
+            runSpacing: 8,
+            spacing: 8,
+            children: widget.link_set
+                .map(
+                  (url) => OutlinedButton(
+                    onPressed: () {},
+                    style: get_tag_style(),
+                    child: Row(
+                      mainAxisSize: .min,
+                      children: [
+                        Text(url.value),
+                        SizedBox(width: 10),
+                        IconButton(
+                          onPressed: () => setState(() => widget.link_set.remove(url)),
+                          style: get_button_icon_style(),
+                          icon: Icon(Icons.delete),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
     );
   }
 }
