@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:messagepack/messagepack.dart';
 import 'package:tagger/serializer.dart';
 import 'package:test/test.dart';
@@ -30,6 +31,10 @@ void main() {
           expect(artist.urls.length, 0);
         }
       );
+    });
+    test("Incorrect Artist", () {
+      final artist = Artist.makeFromUnpacker(Unpacker(Uint8List.fromList([1,2,3])));
+      expect(artist.isNone(), true);
     });
     test("Serialization of an Artist (name, single tag, single url)", () {
       final bytes = Artist(
