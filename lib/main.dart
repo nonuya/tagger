@@ -34,7 +34,7 @@ class App extends StatelessWidget {
             child: SafeArea(
               child: PageView(
                 controller: controller,
-                children: [buildHomePage(), AddPage()],
+                children: [buildHomePage(), AddPage(database)],
               ),
             ),
           ),
