@@ -6,6 +6,47 @@ import 'package:tagger/theme.dart';
 import 'package:fpdart/fpdart.dart' as fp;
 import 'package:toastification/toastification.dart';
 
+class AddPage extends StatelessWidget {
+  final _formKey = GlobalKey<FormState>();
+  
+  AddPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: .stretch,
+        children: [
+          Row(
+            mainAxisAlignment: .end,
+            children: [
+              const Expanded(
+                child: Text(
+                  "Add Artist",
+                  textAlign: .center,
+                  style: TextStyle(fontWeight: .bold, fontSize: 24),
+                ),
+              ),
+              ElevatedButton(onPressed: () {}, child: const Text("Save")),
+            ],
+          ),
+
+          SizedBox(height: 10),
+          Expanded(child: TextFormField(
+            decoration: InputDecoration(
+              labelText: "Artist Name",
+              hintText: "artist 1"
+            ),
+            validator: (value) => (value == null || value.isEmpty) ? "Tag is empty" : null,
+          )),
+          // add.TagForm(),
+        ],
+      ),
+    );
+  }
+}
+
 final vec_tags = [
   Tag(id: 0, name: .unsafeMake("Tag 1")),
   Tag(id: 1, name: .unsafeMake("Tag 2")),
@@ -70,12 +111,7 @@ class _TagForm extends State<TagForm> {
                         icon: Icon(Icons.add),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Tag is empty";
-                      }
-                      return null;
-                    },
+                    validator: (value) => (value == null || value.isEmpty) ? "Tag is empty" : null,
                   );
                 },
           ),
@@ -156,7 +192,11 @@ class _TagForm extends State<TagForm> {
                           ).run();
                           res.match(
                             (e) => setState(
-                              () => toastification.show(title: Text(e), type: .error, autoCloseDuration: const Duration(seconds: 2)),
+                              () => toastification.show(
+                                title: Text(e),
+                                type: .error,
+                                autoCloseDuration: const Duration(seconds: 2),
+                              ),
                             ),
                             (bytes) => updateImage(bytes),
                           );
