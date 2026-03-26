@@ -17,15 +17,23 @@ ThemeData get_app_theme_data() {
   );
 }
 
-ButtonStyle get_tag_style(bool selected) {
+ButtonStyle get_tag_style(Color borderColor) {
   return OutlinedButton.styleFrom(
-    side: selected ? BorderSide(color: Colors.blue, width: 2) : null,
+    side: BorderSide(color: borderColor, width: 2),
     backgroundColor: Colors.grey[800],
-    foregroundColor: Colors.white,
-    padding: EdgeInsetsGeometry.symmetric(vertical: 4, horizontal: 8),
+    foregroundColor: const Color.fromRGBO(255, 255, 255, 1),
+    padding: .symmetric(vertical: 4, horizontal: 8),
     tapTargetSize: .shrinkWrap,
-    minimumSize: Size.zero,
+    minimumSize: .zero,
     textStyle: TextStyle(fontSize: 12)
+  );
+}
+
+ButtonStyle get_button_icon_style() {
+  return OutlinedButton.styleFrom(
+    minimumSize: .zero,
+    tapTargetSize: .shrinkWrap,
+    padding: .all(5)
   );
 }
 
