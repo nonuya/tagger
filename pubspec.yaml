@@ -39,6 +39,7 @@ dependencies:
   test: ^1.30.0
   equatable: ^2.0.8
   http: ^1.6.0
+  toastification: ^3.0.3
 
 dev_dependencies:
   flutter_test:

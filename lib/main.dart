@@ -1,9 +1,10 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' as fp;
+import 'package:tagger/image_extractor.dart';
 import 'package:tagger/theme.dart';
 import 'package:tagger/serializer.dart';
+import 'package:toastification/toastification.dart';
 
 final test_artist = Artist(
   name: NonEmptyString.unsafeMake("Artista 1"),
@@ -71,21 +72,23 @@ void main() {
 }
 
 class App extends StatelessWidget {
-  final controller = PageController(initialPage: 1, keepPage: false);
+  final controller = PageController(initialPage: 1, keepPage: true);
 
   App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: get_app_theme_data(),
-      home: Scaffold(
-        body: Padding(
-          padding: EdgeInsetsGeometry.all(16),
-          child: SafeArea(
-            child: PageView(
-              controller: controller,
-              children: [buildHomePage(), buildAddPage()],
+    return ToastificationWrapper(
+      child: MaterialApp(
+        theme: get_app_theme_data(),
+        home: Scaffold(
+          body: Padding(
+            padding: EdgeInsetsGeometry.all(16),
+            child: SafeArea(
+              child: PageView(
+                controller: controller,
+                children: [buildHomePage(), buildAddPage()],
+              ),
             ),
           ),
         ),
@@ -196,7 +199,7 @@ class _TagForm extends State<TagForm> {
             children: map.entries
                 .map(
                   (e) => OutlinedButton(
-                    onPressed: () => showImageModal(),
+                    onPressed: () => showImageModal(e.key),
                     style: get_tag_style(
                       e.value.isSome() ? Colors.green : Colors.red,
                     ),
@@ -221,29 +224,68 @@ class _TagForm extends State<TagForm> {
     );
   }
 
-  void showImageModal() {
+  void showImageModal(NonEmptyString key) {
+    final controller = TextEditingController();
+    var loading = false;
+
+    final updateImage = (bytes) => setState(() => map[key] = fp.some(bytes));
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
-        return Column(
-          children: [
-            Expanded(
-              flex: 1,
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: "Image URL",
-                  suffixIcon: IconButton(onPressed: () {}, icon: Icon(Icons.search)),
-                  hintText: "https://hitomi.la/reader/xxxxxxx.html#xx-xx",
+        return StatefulBuilder(
+          builder: (context, setState) {
+            var image = map
+                .lookup(key)
+                .flatMap((o) => o)
+                .match(
+                  () => Icon(Icons.broken_image),
+                  (bytes) => Image.memory(bytes, fit: .contain),
+                );
+
+            if (loading) {
+              image = Center(child: CircularProgressIndicator());
+            }
+
+            return Column(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      labelText: "Image URL",
+                      suffixIcon: IconButton(
+                        onPressed: () async {
+                          setState(() => loading = true);
+
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          await Future.delayed(
+                            const Duration(milliseconds: 50),
+                          );
+
+                          final res = await get_image_bytes_from_hitomi_url(
+                            controller.text,
+                          ).run();
+                          res.match(
+                            (e) => setState(
+                              () => toastification.show(title: Text(e), type: .error, autoCloseDuration: const Duration(seconds: 2)),
+                            ),
+                            (bytes) => updateImage(bytes),
+                          );
+
+                          setState(() => loading = false);
+                        },
+                        icon: Icon(Icons.search),
+                      ),
+                      hintText: "https://hitomi.la/reader/xxxxxxx.html#xx-xx",
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Expanded(
-              flex: 5,
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
-          ],
+                Expanded(flex: 7, child: image),
+              ],
+            );
+          },
         );
       },
     );
