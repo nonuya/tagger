@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:tagger/add_page.dart';
+import 'package:tagger/bootstrap.dart';
 import 'package:tagger/database.dart';
 import 'package:tagger/serializer.dart';
 import 'package:tagger/theme.dart';
@@ -17,7 +19,14 @@ class HomePage extends StatelessWidget {
         Expanded(
           flex: 0,
           child: TextField(
-            decoration: InputDecoration(hintText: "Search by..."),
+            decoration: InputDecoration(
+              hintText: "artist name...",
+              labelText: "Search",
+              suffixIcon: IconButton(
+                onPressed: () => go_to_add_page(context),
+                icon: Icon(Icons.add),
+              )
+            ),
           ),
         ),
         SizedBox(height: 10),
@@ -32,6 +41,23 @@ class HomePage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void go_to_add_page(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator())
+    );
+
+    // await Future.delayed(Duration(seconds: 2)); // Simular tarea pesada
+
+    if(context.mounted) {
+      Navigator.pop(context);
+
+      await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (context) => bootstrap(AddPage(null, _database))));
+    }
   }
 }
 

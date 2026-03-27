@@ -7,6 +7,8 @@ import 'package:messagepack/messagepack.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tagger/serializer.dart';
 
+typedef ArtistEntry = (NonEmptyString, Iterable<(NonEmptyString, Uint8List)>, Iterable<NonEmptyString>);
+
 class Database {
   final String _directory_path;
   final List<Artist> _artists;
@@ -21,7 +23,7 @@ class Database {
 
   Option<Tag> get_tag_by_id(int id) => _map_tags.lookup(id).map((i) => _tags[i]); 
 
-  void add(
+  /*void add(
     NonEmptyString artist_name,
     Iterable<(NonEmptyString, Uint8List)> tags,
     Iterable<NonEmptyString> urls) {
@@ -43,7 +45,7 @@ class Database {
           _map_artists[artist_name] = _artists.length-1;
         },
         (i) => _artists[i] = artist);
-  }
+  }*/
 
   static TaskOption<Database> make_from_data() => TaskOption(() async {
     final directory = await getApplicationDocumentsDirectory();

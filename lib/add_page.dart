@@ -11,10 +11,11 @@ import 'package:toastification/toastification.dart';
 
 class AddPage extends StatefulWidget {
   final Database _database;
+  final ArtistEntry? _entry;
   final _tag_map = HashMap<NonEmptyString, fp.Option<Uint8List>>();
   final _link_set = HashSet<NonEmptyString>();
 
-  AddPage(this._database, {super.key});
+  AddPage(this._entry, this._database, {super.key});
 
   @override
   createState() => _AddPage();
@@ -31,6 +32,15 @@ class _AddPage extends State<AddPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    if(widget._entry != null) {
+      _controller.text = widget._entry!.$1.value;
+    }
+  }  
+
+  @override
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
@@ -38,6 +48,12 @@ class _AddPage extends State<AddPage> {
         children: [
           Row(
             children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                },
+                icon: Icon(Icons.arrow_circle_left_rounded),
+              ),
               const Expanded(
                 child: Text(
                   "Add Artist",
@@ -45,7 +61,7 @@ class _AddPage extends State<AddPage> {
                   style: TextStyle(fontWeight: .bold, fontSize: 24),
                 ),
               ),
-              ElevatedButton(
+              IconButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     NonEmptyString.makeFromString(_controller.text)
@@ -63,11 +79,11 @@ class _AddPage extends State<AddPage> {
                               );
                       },
                       (e) {
-                        widget._database.add(
+                        /*widget._database.add(
                           e.$1,
                           e.$2,
                           e.$3
-                        );
+                        );*/
 
                         setState(() {
                           widget._link_set.clear();
@@ -78,7 +94,7 @@ class _AddPage extends State<AddPage> {
                     );
                   }
                 },
-                child: const Text("Save"),
+                icon: Icon(Icons.save),
               ),
             ],
           ),
