@@ -79,27 +79,31 @@ class _AddPage extends State<AddPage> {
                                 autoCloseDuration: const Duration(seconds: 3),
                               );
                       },
-                      (e) {
-                        setState(() => loading = true);
+                      (e) async {
+                        if (widget._database.doesExistArtist(e.$1)) {
+                          if (await _show_yes_no_dialog(context, "Artist '${e.$1.value}' exists. Overwrite?")) {
+                            setState(() => loading = true);
 
-                        widget.
-                          _database
-                          .add(e)
-                          .match(
-                            () => toastification.show(
-                                title: Text("Failed to save: $e"),
-                                type: .error,
-                                autoCloseDuration: const Duration(seconds: 3),
-                              ),
-                            (_) => toastification.show(
-                                title: const Text("Artist saved!"),
-                                type: .success,
-                                autoCloseDuration: const Duration(seconds: 3),
+                            widget.
+                              _database
+                              .add(e)
+                              .match(
+                                () => toastification.show(
+                                    title: Text("Failed to save: $e"),
+                                    type: .error,
+                                    autoCloseDuration: const Duration(seconds: 3),
+                                  ),
+                                (_) => toastification.show(
+                                    title: const Text("Artist saved!"),
+                                    type: .success,
+                                    autoCloseDuration: const Duration(seconds: 3),
+                                  )
                               )
-                          )
-                          .run().whenComplete(
-                          () => setState(() => loading = false)
-                          );
+                              .run().whenComplete(
+                              () => setState(() => loading = false)
+                              );
+                          }
+                        }
                       }
                     );
                   }

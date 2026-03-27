@@ -47,6 +47,8 @@ class Database {
 
   Option<Tag> get_tag_by_id(int id) => _map_tags.lookup(id).map((i) => _tags[i]);
 
+  bool doesExistArtist(NonEmptyString artist_name) => _map_artists.containsKey(artist_name);
+
   TaskOption<void> add(ArtistEntry artist_entry) => TaskOption
     .tryCatch(() async => await Directory("$_directory_path/images").create(recursive: true))
     .andThen(() => TaskOption.tryCatch(() async { // Saving images

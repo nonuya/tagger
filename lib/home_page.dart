@@ -188,6 +188,7 @@ class _ArtistItemState extends State<_ArtistItem> {
                   spacing: 8.0,
                   runSpacing: 8.0,
                   children: [
+                    // TODO: Change this to real URL
                     GestureDetector(child: Text("a", style: get_link_style())),
                   ],
                 ),
