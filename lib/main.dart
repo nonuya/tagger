@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tagger/database.dart';
 import 'package:tagger/theme.dart';
 import 'package:toastification/toastification.dart';
-import 'package:tagger/home_page.dart' as home;
+import 'package:tagger/home_page.dart';
 import 'package:tagger/add_page.dart';
 
 void main() async {
@@ -34,28 +34,12 @@ class App extends StatelessWidget {
             child: SafeArea(
               child: PageView(
                 controller: controller,
-                children: [buildHomePage(), AddPage(database)],
+                children: [HomePage(database), AddPage(database)],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget buildHomePage() {
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        Expanded(
-          flex: 0,
-          child: TextField(
-            decoration: InputDecoration(hintText: "Search by..."),
-          ),
-        ),
-        SizedBox(height: 10),
-        // home.ArtistItem(test_artist),
-      ],
     );
   }
 }
