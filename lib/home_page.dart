@@ -8,18 +8,14 @@ import 'package:tagger/serializer.dart';
 import 'package:tagger/theme.dart';
 import 'package:fpdart/fpdart.dart' as fp;
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   final Database _database;
-
+  
   const HomePage(this._database, {super.key});
 
   @override
-  createState() => _HomePage();
-}
-
-class _HomePage extends State<HomePage> {
-  @override
   Widget build(BuildContext context) {
+    debugPrint("A");
     return Column(
       crossAxisAlignment: .start,
       children: [
@@ -39,11 +35,15 @@ class _HomePage extends State<HomePage> {
         SizedBox(height: 10),
         Expanded(
           child: SingleChildScrollView(
-            child: Column(
-              children: widget._database.artists
-                  .map((a) => _ArtistItem(widget._database, a))
+            child: ListenableBuilder(
+              listenable: _database.artists,
+              builder: (builder, _) => Column(
+                children: _database
+                  .artists
+                  .iterable
+                  .map((a) => _ArtistItem(_database, a))
                   .toList(),
-            ),
+              ))
           ),
         ),
       ],
@@ -63,8 +63,7 @@ class _HomePage extends State<HomePage> {
       Navigator.pop(context);
 
       await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => bootstrap(AddPage(null, widget._database))))
-        .whenComplete(() => setState(() {}));
+        .push(MaterialPageRoute(builder: (context) => bootstrap(AddPage(null, _database))));
     }
   }
 }
@@ -131,7 +130,9 @@ class _ArtistItemState extends State<_ArtistItem> {
               Row(
                 children: [
                   IconButton(onPressed: () {}, icon: Icon(Icons.edit)),
-                  IconButton(onPressed: () {}, icon: Icon(Icons.delete)),
+                  IconButton(onPressed: () {
+                    setState(() {});
+                  }, icon: Icon(Icons.delete)),
                 ],
               ),
             ],

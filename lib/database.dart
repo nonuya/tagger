@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:messagepack/messagepack.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,17 +13,37 @@ typedef ArtistEntry = (
   List<(NonEmptyString, Uint8List)>, // Tags
   HashSet<NonEmptyString>); // Urls
 
+class ArtistList with ChangeNotifier {
+  final List<Artist> _list;
+
+  ArtistList(this._list);
+
+  int get length => _list.length;
+  Iterable<Artist> get iterable => _list;
+
+  void add(Artist artist) {
+    _list.add(artist);
+    notifyListeners();
+  }
+
+  void update(int index, Artist artist) {
+    _list[index] = artist;
+    notifyListeners();
+  }
+
+  Artist get(int index) => _list[index];
+}
+
 class Database {
   final String _directory_path;
-  final List<Artist> _artists;
+  final ArtistList artists;
   final List<Tag> _tags;
   final HashMap<NonEmptyString/* artist_name */, int /* index in list */> _map_artists;
   final HashMap<int /* tag_id */, int /* index in list */> _map_tags;
 
   List<Tag> get tags => List.unmodifiable(_tags);
-  List<Artist> get artists => List.unmodifiable(_artists);
   
-  Database._(this._directory_path, this._artists, this._tags, this._map_artists, this._map_tags);
+  Database._(this._directory_path, this.artists, this._tags, this._map_artists, this._map_tags);
 
   Option<Tag> get_tag_by_id(int id) => _map_tags.lookup(id).map((i) => _tags[i]);
 
@@ -66,7 +87,7 @@ class Database {
       .match(
         () {
           packer.packListLength(artists.length+1);
-          for (final artist in Iterable<Artist>.empty().followedBy(artists).followedBy([new_artist])) {
+          for (final artist in Iterable<Artist>.empty().followedBy(artists.iterable).followedBy([new_artist])) {
             artist.writeIntoPacker(packer);
           }
         },
@@ -76,7 +97,7 @@ class Database {
             if (i == j) {
               new_artist.writeIntoPacker(packer);
             } else {
-              artists[i].writeIntoPacker(packer);
+              artists.get(i).writeIntoPacker(packer);
             }
           }
         });
@@ -94,10 +115,10 @@ class Database {
       _map_artists.lookup(artist_entry.$1)
         .match(
           () {
-            _artists.add(new_artist);
-            _map_artists[artist_entry.$1] = _artists.length-1;
+            artists.add(new_artist);
+            _map_artists[artist_entry.$1] = artists.length-1;
           },
-          (i) => _artists[i] = new_artist);
+          (i) => artists.update(i, new_artist));
     }))
     .orElse(() => TaskOption(() async {
       for (final tag in artist_entry.$2) {
@@ -122,7 +143,7 @@ class Database {
       {
       final packer = Packer();
       packer.packListLength(artists.length);
-      for (final artist in artists) {
+      for (final artist in artists.iterable) {
         artist.writeIntoPacker(packer);
       }
 
@@ -164,6 +185,6 @@ class Database {
     final map_tags    = HashMap<int, int>.fromEntries(tags.mapWithIndex((tag, i) => MapEntry(tag.id, i)));
     final map_artists = HashMap<NonEmptyString, int>.fromEntries(artists.mapWithIndex((artist, i) => MapEntry(artist.name, i)));
 
-    return some(Database._(directory.path, artists, tags, map_artists, map_tags));
+    return some(Database._(directory.path, ArtistList(artists), tags, map_artists, map_tags));
   });
 }
