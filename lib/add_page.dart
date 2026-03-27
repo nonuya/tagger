@@ -84,30 +84,31 @@ class _AddPage extends State<AddPage> {
                               );
                       },
                       (e) async {
-                        if (widget._database.doesExistArtist(e.$1)) {
-                          if (await _show_yes_no_dialog(context, "Artist '${e.$1.value}' exists. Overwrite?")) {
-                            setState(() => loading = true);
-
-                            widget.
-                              _database
-                              .add(e)
-                              .match(
-                                () => toastification.show(
-                                    title: Text("Failed to save: $e"),
-                                    type: .error,
-                                    autoCloseDuration: const Duration(seconds: 3),
-                                  ),
-                                (_) => toastification.show(
-                                    title: const Text("Artist saved!"),
-                                    type: .success,
-                                    autoCloseDuration: const Duration(seconds: 3),
-                                  )
-                              )
-                              .run().whenComplete(
-                              () => setState(() => loading = false)
-                              );
-                          }
+                        if (widget._database.doesExistArtist(e.$1) &&
+                          !await _show_yes_no_dialog(context, "Artist '${e.$1.value}' exists. Overwrite?")) {
+                            return;
                         }
+                        
+                        setState(() => loading = true);
+
+                        widget.
+                          _database
+                          .add(e)
+                          .match(
+                            () => toastification.show(
+                                title: Text("Failed to save: $e"),
+                                type: .error,
+                                autoCloseDuration: const Duration(seconds: 3),
+                              ),
+                            (_) => toastification.show(
+                                title: const Text("Artist saved!"),
+                                type: .success,
+                                autoCloseDuration: const Duration(seconds: 3),
+                              )
+                          )
+                          .run().whenComplete(
+                          () => setState(() => loading = false)
+                          );
                       }
                     );
                   }
@@ -251,8 +252,7 @@ class _TagFormState extends State<_TagForm> {
     var loading = false;
     String url = "";
 
-    final updateImage = (bytes) =>
-        setState(() => widget.tag_map[key] = fp.some(bytes));
+    final updateImage = (bytes) => setState(() => widget.tag_map[key] = fp.some(bytes));
 
     showModalBottomSheet(
       context: context,
@@ -290,19 +290,21 @@ class _TagFormState extends State<_TagForm> {
 
                           final res = await get_image_bytes_from_hitomi_url(
                             url,
-                          ).run();
+                          )
+                          .run();
+
                           res.match(
-                            (e) => setState(
-                              () => toastification.show(
+                            (e) => toastification.show(
                                 title: Text(e),
                                 type: .error,
                                 autoCloseDuration: const Duration(seconds: 3),
-                              ),
                             ),
                             (bytes) => updateImage(bytes),
                           );
-
-                          setState(() => loading = false);
+                          
+                          if (context.mounted) {
+                            setState(() => loading = false);
+                          }
                         },
                         icon: Icon(Icons.search),
                       ),
