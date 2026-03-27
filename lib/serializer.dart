@@ -31,11 +31,14 @@ class NonEmptyString extends Equatable {
     .flatMap((name) => makeFromString(name));
 }
 
-class ArtistTag {
+class ArtistTag extends Equatable {
   final int tag_id;
   final NonEmptyString image_url;
 
   ArtistTag({required this.tag_id, required this.image_url});
+
+  @override
+  List<Object?> get props => [tag_id];
 
   void pack(Packer packer) {
     packer.packInt(tag_id);
