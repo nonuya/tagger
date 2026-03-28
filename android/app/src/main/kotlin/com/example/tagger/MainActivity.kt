@@ -1,4 +1,4 @@
-package com.example.tagger
+package com.phobos.tagger
 
 import io.flutter.embedding.android.FlutterActivity
 
