@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tagger/add_page.dart';
 import 'package:tagger/bootstrap.dart';
 import 'package:tagger/database.dart';
+import 'package:tagger/dialog.dart';
 import 'package:tagger/serializer.dart';
 import 'package:tagger/theme.dart';
 import 'package:fpdart/fpdart.dart' as fp;
@@ -16,7 +18,6 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint("A");
     return Column(
       crossAxisAlignment: .start,
       children: [
@@ -146,8 +147,10 @@ class _ArtistItemState extends State<_ArtistItem> {
               Row(
                 children: [
                   IconButton(onPressed: () => HomePage._go_to_add_page(widget.database, context, widget.artist), icon: Icon(Icons.edit)),
-                  IconButton(onPressed: () {
-                    setState(() {});
+                  IconButton(onPressed: () async {
+                    if (await show_yes_no_dialog(context, "Delete '${widget.artist.name.value}'")) {
+                      widget.database.removeArtist(widget.artist.name);
+                    }
                   }, icon: Icon(Icons.delete)),
                 ],
               ),
@@ -203,10 +206,21 @@ class _ArtistItemState extends State<_ArtistItem> {
                 Wrap(
                   spacing: 8.0,
                   runSpacing: 8.0,
-                  children: [
-                    // TODO: Change this to real URL
-                    GestureDetector(child: Text("a", style: get_link_style())),
-                  ],
+                  children: widget.artist.urls
+                    .map((url) => 
+                    GestureDetector(
+                      onTap: () async {
+                        await Clipboard.setData(ClipboardData(text: url.value));
+
+                        toastification.show(
+                          title: const Text("URL copied!"),
+                          type: .success,
+                          autoCloseDuration: const Duration(seconds: 2),
+                        );
+                      },
+                      child: Text(url.value, style: get_link_style())
+                      ),
+                    ).toList(),
                 ),
               ],
             ),
