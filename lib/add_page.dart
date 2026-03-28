@@ -17,7 +17,7 @@ class AddPage extends StatefulWidget {
   final HashSet<NonEmptyString> _link_set;
 
   AddPage(ArtistEntry? entry, this._database, {super.key}) :
-    _tag_map = entry != null ? HashMap.fromIterable(entry.$2, key: (e) => e.$1, value: (e) => fp.some(e.$2)) : HashMap(),
+    _tag_map = entry != null ? entry.$2: HashMap(),
     _link_set = entry != null ? entry.$3 : HashSet(),
     _initial_artist_name = entry?.$1.value;
 
@@ -55,7 +55,7 @@ class _AddPage extends State<AddPage> {
           Row(
             children: [
               IconButton(
-                onPressed: loading ? null : () {
+                onPressed: () {
                   Navigator.of(context, rootNavigator: true).pop();
                 },
                 icon: Icon(Icons.arrow_circle_left_rounded),
@@ -71,11 +71,7 @@ class _AddPage extends State<AddPage> {
                 onPressed: loading ? null : () async {
                   if (formKey.currentState!.validate()) {
                     NonEmptyString.makeFromString(controller.text)
-                    .map2(
-                      widget._tag_map.entries
-                        .traverseOption(
-                          (e) => e.value.map((bytes) => (e.key, bytes))),
-                      (artist_name, tags) => (artist_name, tags, widget._link_set),
+                    .map((artist_name) =>(artist_name, widget._tag_map, widget._link_set)
                     ).match(
                       () {
                         toastification.show(
@@ -94,17 +90,28 @@ class _AddPage extends State<AddPage> {
 
                         await widget.
                           _database
-                          .addArtist(e);
-                        
-                        toastification.show(
-                          title: const Text("Artist saved!"),
-                          type: .success,
-                          autoCloseDuration: const Duration(seconds: 3),
-                        );
-
-                        if (context.mounted) {
-                          setState(() => loading = false);
-                        }
+                          .addArtist(e)
+                          .match(
+                            (e) => toastification.show(
+                                    title: const Text("Failed to save artist"),
+                                    description: Text(e),
+                                    type: .error,
+                                    autoCloseDuration: const Duration(seconds: 3),
+                                  ),
+                            (_) {
+                              toastification.show(
+                                title: const Text("Artist saved!"),
+                                type: .success,
+                                autoCloseDuration: const Duration(seconds: 3),
+                              );
+                            }
+                          )
+                          .run()
+                          .whenComplete(() {
+                            if (context.mounted) {
+                              setState(() => loading = false);
+                            }
+                          });
                       }
                     );
                   }
@@ -214,7 +221,7 @@ class _TagFormState extends State<_TagForm> {
                   (e) => OutlinedButton(
                     onPressed: () => showImageModal(e.key),
                     style: get_tag_style(
-                      e.value.isSome() ? Colors.green : Colors.red,
+                      e.value.isSome() ? Colors.blue : null,
                     ),
                     child: Row(
                       mainAxisSize: .min,
@@ -248,7 +255,11 @@ class _TagFormState extends State<_TagForm> {
     var loading = false;
     String url = "";
 
-    final updateImage = (bytes) => setState(() => widget.tag_map[key] = fp.some(bytes));
+    final updateImage = (bytes) {
+      if(mounted) {
+        setState(() => widget.tag_map[key] = fp.some(bytes));
+      }
+    };
 
     showModalBottomSheet(
       context: context,
