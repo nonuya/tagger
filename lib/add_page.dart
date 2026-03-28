@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:tagger/database.dart';
+import 'package:tagger/dialog.dart';
 import 'package:tagger/image_extractor.dart';
 import 'package:tagger/serializer.dart';
 import 'package:tagger/theme.dart';
@@ -67,7 +68,7 @@ class _AddPage extends State<AddPage> {
                 ),
               ),
               IconButton(
-                onPressed: loading ? null : () {
+                onPressed: loading ? null : () async {
                   if (formKey.currentState!.validate()) {
                     NonEmptyString.makeFromString(controller.text)
                     .map2(
@@ -85,30 +86,25 @@ class _AddPage extends State<AddPage> {
                       },
                       (e) async {
                         if (widget._database.doesExistArtist(e.$1) &&
-                          !await _show_yes_no_dialog(context, "Artist '${e.$1.value}' exists. Overwrite?")) {
+                          !await show_yes_no_dialog(context, "Artist '${e.$1.value}' exists. Overwrite?")) {
                             return;
                         }
-                        
+
                         setState(() => loading = true);
 
-                        widget.
+                        await widget.
                           _database
-                          .add(e)
-                          .match(
-                            () => toastification.show(
-                                title: Text("Failed to save: $e"),
-                                type: .error,
-                                autoCloseDuration: const Duration(seconds: 3),
-                              ),
-                            (_) => toastification.show(
-                                title: const Text("Artist saved!"),
-                                type: .success,
-                                autoCloseDuration: const Duration(seconds: 3),
-                              )
-                          )
-                          .run().whenComplete(
-                          () => setState(() => loading = false)
-                          );
+                          .addArtist(e);
+                        
+                        toastification.show(
+                          title: const Text("Artist saved!"),
+                          type: .success,
+                          autoCloseDuration: const Duration(seconds: 3),
+                        );
+
+                        if (context.mounted) {
+                          setState(() => loading = false);
+                        }
                       }
                     );
                   }
@@ -227,7 +223,7 @@ class _TagFormState extends State<_TagForm> {
                         SizedBox(width: 10),
                         IconButton(
                           onPressed: () async {
-                            final confirm = await _show_yes_no_dialog(
+                            final confirm = await show_yes_no_dialog(
                               context,
                               'Delete Tag "${e.key.value}"?',
                             );
@@ -280,7 +276,7 @@ class _TagFormState extends State<_TagForm> {
                     decoration: InputDecoration(
                       labelText: "Image URL",
                       suffixIcon: IconButton(
-                        onPressed: () async {
+                        onPressed: loading ? null : () async {
                           setState(() => loading = true);
 
                           FocusManager.instance.primaryFocus?.unfocus();
@@ -395,7 +391,7 @@ class _LinkFormState extends State<_LinkForm> {
                         SizedBox(width: 10),
                         IconButton(
                           onPressed: () async {
-                            final confirm = await _show_yes_no_dialog(
+                            final confirm = await show_yes_no_dialog(
                               context,
                               'Delete "${url.value}"?',
                             );
@@ -415,24 +411,4 @@ class _LinkFormState extends State<_LinkForm> {
       ),
     );
   }
-}
-
-Future<bool> _show_yes_no_dialog(BuildContext context, String message) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text("No"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Yes"),
-            ),
-          ],
-        ),
-      ) ??
-      false;
 }
