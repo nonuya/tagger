@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:messagepack/messagepack.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:tagger/db/file.dart';
 import 'package:tagger/db/tables.dart';
 
 typedef ArtistEntry = (
@@ -153,7 +152,7 @@ class Database {
                     },
                     (bytes) {
                       final image_path = prev_artist_tag.opt_image_path.getOrElse(() => NonEmptyString.unsafeMake("$_directory_path/images/${artist_entry.$1.value}-${tag.name.value}"));
-                      futures.add(compress_image_and_save(bytes, image_path.value));
+                      futures.add(File(image_path.value).writeAsBytes(bytes));
                       return prev_artist_tag.cloneWith(some(NonEmptyString.unsafeMake(image_path.value)));
                     });
 
@@ -166,7 +165,7 @@ class Database {
               final opt_image_path = 
                 entry.value.map((bytes) {
                   final image_path = "$_directory_path/images/${artist_entry.$1.value}-${entry.key.value}";
-                  futures.add(compress_image_and_save(bytes, image_path));
+                  futures.add(File(image_path).writeAsBytes(bytes));
                   return NonEmptyString.unsafeMake(image_path); 
                 });
               artist_tags.add(_tag_table.attach(entry.key, opt_image_path));
@@ -181,7 +180,7 @@ class Database {
               final opt_image_path = 
                 entry.value.map((bytes) {
                   final image_path = "$_directory_path/images/${artist_entry.$1.value}-${entry.key.value}";
-                  futures.add(compress_image_and_save(bytes, image_path));
+                  futures.add(File(image_path).writeAsBytes(bytes));
                   return NonEmptyString.unsafeMake(image_path); 
                 });
 

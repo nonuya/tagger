@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,7 +25,14 @@ TaskEither<String, Uint8List> get_image_bytes_from_hitomi_url(
       return left("Failed to get image bytes from URL");
     }
 
-    return right(response.bodyBytes);
+    final compressed_bytes = await FlutterImageCompress.compressWithList(
+    response.bodyBytes, 
+    minWidth: 512,
+    minHeight: 512,
+    quality: 70,
+    );
+
+    return right(compressed_bytes);
   }),
 );
 
