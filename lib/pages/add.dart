@@ -184,27 +184,17 @@ class _TagFormState extends State<_TagForm> {
             fieldViewBuilder:
                 (context, controller, focusNode, onEditingComplete) {
                   return TextFormField(
+                    onTapOutside: (_) {
+                       focusNode.unfocus();
+                    },
+                    onFieldSubmitted: (_) => add_tag(controller, focusNode), 
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
                       labelText: "Tag?",
                       hintText: "tag 1",
                       suffixIcon: IconButton(
-                        onPressed: () {
-                          if (formKey.currentState!.validate()) {
-                            NonEmptyString.makeFromString(
-                              controller.text,
-                            ).match(() {}, (v) {
-                              if (!widget.tag_map.containsKey(v)) {
-                                setState(() {
-                                  widget.tag_map[v] = fp.None();
-                                });
-                              }
-                            });
-                            controller.clear();
-                            focusNode.unfocus();
-                          }
-                        },
+                        onPressed: () => add_tag(controller, focusNode),
                         icon: Icon(Icons.add),
                       ),
                     ),
@@ -250,6 +240,22 @@ class _TagFormState extends State<_TagForm> {
         ],
       ),
     );
+  }
+
+  void add_tag(TextEditingController controller, FocusNode focusNode) {
+    if (formKey.currentState!.validate()) {
+      NonEmptyString.makeFromString(
+          controller.text,
+          ).match(() {}, (v) {
+            if (!widget.tag_map.containsKey(v)) {
+            setState(() {
+                widget.tag_map[v] = fp.None();
+                });
+            }
+            });
+      controller.clear();
+      focusNode.unfocus();
+    }
   }
 
   void showImageModal(NonEmptyString key) {
