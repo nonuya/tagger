@@ -13,23 +13,27 @@ typedef ArtistEntry = (
   HashMap<NonEmptyString, Option<Uint8List>>, // Tags
   HashSet<NonEmptyString>); // Urls
 
-class _ArtistList with ChangeNotifier {
+class _ObservableArtistList with ChangeNotifier {
   final HashMap<NonEmptyString, Artist> container;
 
-  _ArtistList(this.container);
+  _ObservableArtistList(this.container);
+
+
 
   int get length => container.length;
+
+  Option<Artist> get(NonEmptyString name) => container.lookup(name);
+
+  bool contains(NonEmptyString name) => container.containsKey(name);
+
+
 
   void operator[]=(NonEmptyString key, Artist value) {
     container[key] = value;
     notifyListeners();
   }
 
-  Option<Artist> get(NonEmptyString name) => container.lookup(name);
-
-  bool contains(NonEmptyString name) => container.containsKey(name);
-
-  void removeAt(NonEmptyString name) {
+  void remove_at(NonEmptyString name) {
     container.remove(name);
     notifyListeners();
   }
@@ -37,21 +41,28 @@ class _ArtistList with ChangeNotifier {
 
 class Database {
   final String _directory_path;
-  final _ArtistList _artists;
+  final _ObservableArtistList _artists;
   final TagTable _tag_table;
-
-  Iterable<Tag> get tags => List.unmodifiable(_tag_table.tags);
   
   Database._(this._directory_path, List<Artist> artists, this._tag_table) :
-    _artists = _ArtistList(HashMap.fromIterable(artists, key: (e) => e.name, value: (e) => e));
+    _artists = _ObservableArtistList(HashMap.fromIterable(artists, key: (e) => e.name, value: (e) => e));
 
+
+
+
+  String get db_path => "$_directory_path/db";
+  
+  Iterable<Tag> get tags => List.unmodifiable(_tag_table.tags);
+  Iterable<Artist> get artists => List.unmodifiable(_artists.container.values);
+  
   Tag get_tag_by_id(int id) => _tag_table.get_tag(id);
 
   ChangeNotifier get_artists_notifier() => _artists;
 
-  Iterable<Artist> all_artists() => _artists.container.values;
+  bool does_exist_artist(NonEmptyString artist_name) => _artists.contains(artist_name);
 
-  bool doesExistArtist(NonEmptyString artist_name) => _artists.contains(artist_name);
+
+
 
   TaskEither<String, ArtistEntry> convert_artist_to_entry(Artist artist) {
     return TaskEither.tryCatch(
@@ -80,41 +91,35 @@ class Database {
       , HashSet<NonEmptyString>.from(artist.urls))));
   }
   
-  TaskEither<String, void> removeArtist(NonEmptyString artist_name) => TaskEither.tryCatch(
-    () async {
-      _artists.get(artist_name).match(
-        () {},
-        (artist) async {
-          final futures = <Future<void>>[];
-          for (final artist_tag in artist.tags) {
-            _tag_table.detach(artist_tag);
-            artist_tag.opt_image_path.match(
-              () {},
-              (image_path) => futures.add(File(image_path.value).delete())
-            );
-          }
-          await Future.wait(futures);
+  TaskEither<String, void> remove_artist(NonEmptyString artist_name) {
+    return TaskEither.tryCatch(() async {
+        _artists.get(artist_name).match(
+          () {},
+          (artist) async {
+            { // Removing tags and its files
+               final futures = <Future<void>>[];
+               
+               for (final artist_tag in artist.tags) {
+                 _tag_table.detach(artist_tag);
+                 artist_tag.opt_image_path.match(
+                   () {},
+                   (image_path) => futures.add(File(image_path.value).delete())
+                 );
+               }
+               await Future.wait(futures);
+            }
 
-          _artists.removeAt(artist_name);
-          
-          final packer = Packer();
-          packer.packListLength(tags.length);
-          for (final tag in tags) {
-            tag.writeIntoPacker(packer);
+            _artists.remove_at(artist_name);
           }
-          packer.packListLength(_artists.length);
-          for (final artist in all_artists()) {
-            artist.writeIntoPacker(packer);
-          }
-          await File("$_directory_path/db").writeAsBytes(packer.takeBytes());
-        }
-      );
-    },
-    (e, _) => "Failed to remove artist $e"
-  );
+        );
+      },
+      (e, _) => "Failed to remove artist $e"
+    )
+    .andThen(() => _save_database(db_path, tags, artists));
+  }
 
-  TaskEither<String, void> add_artist(ArtistEntry artist_entry) =>
-    TaskEither.tryCatch(
+  TaskEither<String, void> add_artist(ArtistEntry artist_entry) {
+    return TaskEither.tryCatch(
       () async {
         final dir = Directory("$_directory_path/images");
         if (!await dir.exists()) {
@@ -123,8 +128,7 @@ class Database {
       },
       (e, _) => "Failed to create images directory: $e"
     )
-    .andThen(() => TaskEither.tryCatch(
-      () async {
+    .andThen(() => TaskEither.tryCatch(() async {
       final futures = <Future<void>>[];
 
       final new_artist = _artists.get(artist_entry.$1)
@@ -138,9 +142,9 @@ class Database {
             return artist_entry.$2.lookup(tag.name)
               .match(
                 () {
-                  _tag_table.detach(prev_artist_tag);
                   prev_artist_tag.opt_image_path.match(() {},
                     (image_path) => futures.add(File(image_path.value).delete()));
+                  _tag_table.detach(prev_artist_tag);
 
                   return [...acc];
                 },
@@ -193,40 +197,50 @@ class Database {
       await Future.wait(futures);
       
       _artists[new_artist.name] = new_artist;
+      },
+      (_, e) => "Processing error: $e")
+    .andThen(() => _save_database(db_path, tags, artists)));
+   }
 
+  static TaskOption<Database> make_from_data() {
+    return TaskOption.tryCatch(() async => await getApplicationDocumentsDirectory())
+      .flatMap(
+        (directory) {
+          final db_path = "${directory.path}/db";
+
+          return TaskOption.tryCatch(() async => Unpacker(await File(db_path).readAsBytes()))
+            .flatMap((unpacker) {
+              final tag_table = TagTable();
+
+              return List
+                .generate(unpacker.unpackListLength(), (_) => Tag.makeFromUnpacker(unpacker))
+                .sequenceOption()
+                .flatMap((tags) {
+                  for (final tag in tags) {
+                    tag_table.add_tag(tag.id, tag.name);
+                  }
+
+                  return List.generate(unpacker.unpackListLength(), (_) => Artist.makeFromUnpacker(unpacker, tag_table)).sequenceOption();
+                }).toTaskOption()
+              .flatMap((artists) => TaskOption.some(Database._(directory.path, artists, tag_table)));
+            })
+           .alt(() => TaskOption.some(Database._(directory.path, <Artist>[], TagTable())));
+    });
+  }
+}
+
+TaskEither<String, void> _save_database(String outfile_path, Iterable<Tag> tags, Iterable<Artist> artists) {
+   return TaskEither.tryCatch(() async {
       final packer = Packer();
       packer.packListLength(tags.length);
       for (final tag in tags) {
-        tag.writeIntoPacker(packer);
+         tag.writeIntoPacker(packer);
       }
-      packer.packListLength(_artists.length);
-      for (final artist in all_artists()) {
-        artist.writeIntoPacker(packer);
+      packer.packListLength(artists.length);
+      for (final artist in artists) {
+         artist.writeIntoPacker(packer);
       }
-      await File("$_directory_path/db").writeAsBytes(packer.takeBytes());
-      },
-      (e, _) => "Failed to save data: $e"
-    ));
-
-  static TaskOption<Database> make_from_data() =>
-    TaskOption.tryCatch(() async => await getApplicationDocumentsDirectory())
-    .flatMap(
-      (directory) {
-      return TaskOption
-        .tryCatch(() async => Unpacker(await File("${directory.path}/db").readAsBytes()))
-        .flatMap((unpacker) {
-          final tag_table = TagTable();
-          return List
-            .generate(unpacker.unpackListLength(), (_) => Tag.makeFromUnpacker(unpacker))
-            .sequenceOption()
-            .flatMap((tags) {
-              for (final tag in tags) {
-                tag_table.add_tag(tag.id, tag.name);
-              }
-              return List.generate(unpacker.unpackListLength(), (_) => Artist.makeFromUnpacker(unpacker, tag_table)).sequenceOption();
-            }).toTaskOption()
-            .flatMap((artists) => TaskOption.some(Database._(directory.path, artists, tag_table)));
-          })
-          .alt(() => TaskOption.some(Database._(directory.path, <Artist>[], TagTable())));
-    });
+      await File(outfile_path).writeAsBytes(packer.takeBytes());
+   },
+   (_, s) => "Failed to save database $s"); 
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tagger/bootstrap.dart';
 import 'package:tagger/db/database.dart';
-import 'package:tagger/home_page.dart';
+import 'package:tagger/pages/home.dart';
 import 'package:toastification/toastification.dart';
 
 void main() async {
@@ -10,21 +10,9 @@ void main() async {
   runApp(
     await Database.make_from_data()
         .match(
-          () =>
-              const MaterialApp(home: Text("Failed to initialize Database!!")),
-          (database) => App(database),
+          () => const MaterialApp(home: Text("Failed to initialize Database!!")),
+          (database) => ToastificationWrapper(child: bootstrap(HomePage(database))),
         )
         .run(),
   );
-}
-
-class App extends StatelessWidget {
-  final Database database;
-
-  App(this.database, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ToastificationWrapper(child: bootstrap(HomePage(database)));
-  }
 }

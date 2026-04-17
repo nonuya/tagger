@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tagger/add_page.dart';
+import 'package:tagger/pages/add.dart';
 import 'package:tagger/bootstrap.dart';
 import 'package:tagger/db/database.dart';
 import 'package:tagger/dialog.dart';
@@ -140,7 +140,7 @@ class _ArtistItemState extends State<_ArtistItem> {
                 },
               )
             ),
-          )
+             )
         ]
       );
 

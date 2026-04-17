@@ -10,4 +10,4 @@ Widget bootstrap(Widget child) =>
           child: SafeArea(child: child),
         ),
       ),
-    );
+);
