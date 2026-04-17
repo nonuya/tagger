@@ -19,73 +19,9 @@ class HomePage extends StatefulWidget {
 
   @override
   createState() => _HomePage();
-
-  static Future<void> _go_to_add_page(Database database, BuildContext context, [Artist? artist]) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(child: CircularProgressIndicator())
-    );
-
-    ArtistEntry? artist_entry = null;
-
-    if (artist != null) {
-      await database.convert_artist_to_entry(artist)
-        .match(
-          (error) => {
-            toastification.show(
-              title: const Text("Failed to edit tag"),
-              description: Text(error),
-              type: .error,
-              autoCloseDuration: const Duration(seconds: 3),
-            )
-          },
-          (entry) => artist_entry = entry 
-        )
-        .run();
-    }
-
-    if(context.mounted) {
-      Navigator.pop(context);
-
-      await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => bootstrap(AddPage(artist_entry, database))));
-    }
-  }
 }
 
 class _HomePage extends State<HomePage> {
-  var search_text = "";
-  var filter_artist_name = "";
-  var filter_tag_names = <String>[];
-
-  void _process_search_text() {
-    final hasOnlyTags = search_text.trim().startsWith('tag:');
-
-    // artist name
-    final artist_name = hasOnlyTags
-      ? ""
-      : RegExp(r'^(.*?)(?=\s*tag:|$)')
-          .firstMatch(search_text)
-          ?.group(1)
-          ?.trim() ?? "";
-
-    // tags
-    final tags = RegExp(r'tag:\s*(.*?)(?=\s*tag:|$)')
-      .allMatches(search_text)
-      .map((m) => m.group(1)!.trim())
-      .where((t) => t.isNotEmpty)
-      .toList();
-
-    debugPrint("Artist name: $artist_name");
-    debugPrint("Tags: $tags");
-
-    setState(() {
-      filter_artist_name = artist_name.trim();
-      filter_tag_names = tags;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -94,13 +30,12 @@ class _HomePage extends State<HomePage> {
         Expanded(
           flex: 0,
           child: TextField(
-            onChanged: (value) => search_text = value,
+            // FIXME: Change this!
             decoration: InputDecoration(
               hintText: 'artist name tag:tag1 tag: tag 2',
               labelText: "Search",
-              prefixIcon: IconButton(onPressed: _process_search_text, icon: Icon(Icons.search)),
               suffixIcon: IconButton(
-                onPressed: () => HomePage._go_to_add_page(widget._database, context),
+                onPressed: () => _go_to_add_page(widget._database, context),
                 icon: Icon(Icons.add),
               )
             ),
@@ -112,18 +47,9 @@ class _HomePage extends State<HomePage> {
           listenable: widget._database.get_artists_notifier(),
           builder: (context, _) {
             final artists = widget._database
-                .all_artists()
-                .where((artist) => artist.name.value.contains(filter_artist_name))
-                .where((artist) => filter_tag_names.isEmpty ||
-                  artist.tags
-                    .map((e) =>widget._database.get_tag_by_id(e.tag_id).name.value)
-                    .any((name) => filter_tag_names.contains(name)))
+                .artists
                 .toList()
                 ..sort((a,b) => b.tags.length.compareTo(a.tags.length));
-
-            if(artists.isEmpty) {
-              return Text("Not Found");
-            }
 
             return ListView.builder(
               itemCount: artists.length,
@@ -137,6 +63,41 @@ class _HomePage extends State<HomePage> {
     );
   }
 }
+
+
+Future<void> _go_to_add_page(Database database, BuildContext context, [Artist? artist]) async {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => Center(child: CircularProgressIndicator())
+  );
+
+  ArtistEntry? artist_entry = null;
+
+  if (artist != null) {
+    await database.convert_artist_to_entry(artist)
+      .match(
+        (error) => {
+          toastification.show(
+            title: const Text("Failed to edit tag"),
+            description: Text(error),
+            type: .error,
+            autoCloseDuration: const Duration(seconds: 3),
+          )
+        },
+        (entry) => artist_entry = entry 
+      )
+      .run();
+  }
+
+  if(context.mounted) {
+    Navigator.pop(context);
+
+    await Navigator.of(context)
+      .push(MaterialPageRoute(builder: (context) => bootstrap(AddPage(artist_entry, database))));
+  }
+}
+
 
 class _ArtistItem extends StatefulWidget {
   final Database database;
@@ -200,10 +161,10 @@ class _ArtistItemState extends State<_ArtistItem> {
               ),
               Row(
                 children: [
-                  IconButton(onPressed: () => HomePage._go_to_add_page(widget.database, context, widget.artist), icon: Icon(Icons.edit)),
+                  IconButton(onPressed: () => _go_to_add_page(widget.database, context, widget.artist), icon: Icon(Icons.edit)),
                   IconButton(onPressed: () async {
                     if (await show_yes_no_dialog(context, "Delete", "Delete '${widget.artist.name.value}'")) {
-                      await widget.database.removeArtist(widget.artist.name)
+                      await widget.database.remove_artist(widget.artist.name)
                         .match(
                           (e) => toastification.show(
                               title: Text(e),

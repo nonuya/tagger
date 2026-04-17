@@ -81,7 +81,7 @@ class _AddPage extends State<AddPage> {
                               );
                       },
                       (e) async {
-                        if (widget._database.doesExistArtist(e.$1) &&
+                        if (widget._database.does_exist_artist(e.$1) &&
                           !await show_yes_no_dialog(context, "Save", "Artist '${e.$1.value}' exists. Overwrite?")) {
                             return;
                         }
