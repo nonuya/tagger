@@ -367,26 +367,12 @@ class _LinkFormState extends State<_LinkForm> {
           TextFormField(
             controller: controller,
             focusNode: focusNode,
+            onFieldSubmitted: (_) => add_tag(controller, focusNode),
             decoration: InputDecoration(
               labelText: "Link?",
               hintText: "https://www.pixiv.net/",
               suffixIcon: IconButton(
-                onPressed: () {
-                  if (formKey.currentState!.validate()) {
-                    NonEmptyString.makeFromString(controller.text).match(
-                      () {},
-                      (v) {
-                        if (!widget.link_set.contains(v)) {
-                          setState(() {
-                            widget.link_set.add(v);
-                          });
-                        }
-                      },
-                    );
-                    controller.clear();
-                    focusNode.unfocus();
-                  }
-                },
+                onPressed: () => add_tag(controller, focusNode),
                 icon: Icon(Icons.add),
               ),
             ),
@@ -434,5 +420,22 @@ class _LinkFormState extends State<_LinkForm> {
         ],
       ),
     );
+  }
+
+  void add_tag(TextEditingController controller, FocusNode focusNode) {
+    if (formKey.currentState!.validate()) {
+      NonEmptyString.makeFromString(controller.text).match(
+          () {},
+          (v) {
+          if (!widget.link_set.contains(v)) {
+          setState(() {
+              widget.link_set.add(v);
+              });
+          }
+          },
+          );
+      controller.clear();
+      focusNode.unfocus();
+    }
   }
 }
